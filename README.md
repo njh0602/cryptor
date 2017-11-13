@@ -1,6 +1,6 @@
 # cryptor
 
-xor encrytion/decryption, base64 encode/decode
+use xor encrytion/decryption + base64 encode/decode
 
 ## build
 
