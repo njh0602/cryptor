@@ -32,6 +32,8 @@ class cryptor : public cryptor_static_base<void>
     
 public:
     
+    cryptor() = delete;
+    
     static std::string encrypt(const std::string& in)
     {
         return base64_encode(xor_impl(in));
@@ -46,8 +48,6 @@ public:
     static void set_key(const std::string& key) { m_key = key; }
     
 private:
-    
-    cryptor() = delete;
     
     static std::string xor_impl(const std::string& data)
     {
