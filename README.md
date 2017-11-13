@@ -2,6 +2,10 @@
 
 xor encrytion/decryption, base64 encode/decode
 
+## build
+
+g++ -std=c++11 test.cpp
+
 ## fast sample:
 
 ```cpp
