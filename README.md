@@ -2,7 +2,7 @@
 
 use xor encrytion/decryption + base64 encode/decode
 
-## build
+## test
 
 ```
 g++ -std=c++11 test.cpp -test
