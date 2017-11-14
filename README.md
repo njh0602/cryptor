@@ -1,6 +1,6 @@
 # cryptor
 
-use xor encrytion/decryption + base64 encode/decode
+use xor encryption/decryption + base64 encode/decode
 
 ## test
 
