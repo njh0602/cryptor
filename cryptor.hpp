@@ -1,6 +1,6 @@
 //
 //  cryptor.hpp
-//  rnet
+//  realtrick games
 //
 //  Created by NamJunHyeon on 2017. 11. 12..
 //
