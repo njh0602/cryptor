@@ -24,7 +24,7 @@ template <typename dummy>
 const std::string cryptor_static_base<dummy>::m_base64_chars =
 "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 
-template <typename dummy> 
+template <typename dummy>
 std::string cryptor_static_base<dummy>::m_key = "default_key";
 
 class cryptor : public cryptor_static_base<void>
@@ -34,14 +34,24 @@ public:
     
     cryptor() = delete;
     
+    static std::string encrypt(const std::string& in, const std::string& key)
+    {
+        return base64_encode(xor_impl(in, key));
+    }
+    
     static std::string encrypt(const std::string& in)
     {
-        return base64_encode(xor_impl(in));
+        return encrypt(in, m_key);
+    }
+    
+    static std::string decrypt(const std::string& in, const std::string& key)
+    {
+        return xor_impl(base64_decode(in), key);
     }
     
     static std::string decrypt(const std::string& in)
     {
-        return xor_impl(base64_decode(in));
+        return decrypt(in, m_key);
     }
     
     static std::string get_key() { return m_key; }
@@ -49,12 +59,12 @@ public:
     
 private:
     
-    static std::string xor_impl(const std::string& data)
+    static std::string xor_impl(const std::string& data, const std::string& key)
     {
         auto ret = data;
         for (int i = 0; i < ret.size(); ++i)
         {
-            ret[i] ^= m_key.at(i % m_key.size());
+            ret[i] ^= key.at(i % key.size());
         }
         return ret;
     }
@@ -113,7 +123,6 @@ private:
         }
         
         return ret;
-        
     }
     
     static std::string base64_decode(const std::string& encoded_string)

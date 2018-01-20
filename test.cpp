@@ -33,4 +33,17 @@ int main()
         cout << "enc: " << enc << endl;
         cout << "dec: " << dec << endl;
     }
+    
+    cout << endl;
+    
+    {
+        // test 3
+        // use custom key #2
+        cout << "[test #3]" << endl;
+        auto enc = cryptor::encrypt(test_str, "verycomplexkeyhahahahaha!!!!");
+        auto dec = cryptor::decrypt(enc, "verycomplexkeyhahahahaha!!!!");
+        cout << "origin: " << test_str << endl;
+        cout << "enc: " << enc << endl;
+        cout << "dec: " << dec << endl;
+    }
 }
