@@ -11,6 +11,7 @@
 #pragma once
 
 #include <string>
+#include <type_traits>
 
 template <typename dummy>
 class cryptor_static_base
@@ -34,47 +35,57 @@ public:
     
     cryptor() = delete;
     
-    static std::string encrypt(const std::string& in, const std::string& key)
+    template <typename buffer_type>
+    static decltype(auto) encrypt(buffer_type&& in, const std::string& key = m_key)
     {
-        return base64_encode(xor_impl(in, key));
+        return base64_encode(do_xor(std::forward<buffer_type>(in), key, std::is_same<const char*, std::decay_t<buffer_type>>()));
     }
     
-    static std::string encrypt(const std::string& in)
+    template <typename buffer_type>
+    static decltype(auto) decrypt(buffer_type&& in, const std::string& key = m_key)
     {
-        return encrypt(in, m_key);
+        return do_xor(base64_decode(std::forward<buffer_type>(in), std::is_same<const char*, std::decay_t<buffer_type>>()),
+                      key, std::is_same<const char*, std::decay_t<buffer_type>>());
     }
     
-    static std::string decrypt(const std::string& in, const std::string& key)
-    {
-        return xor_impl(base64_decode(in), key);
-    }
-    
-    static std::string decrypt(const std::string& in)
-    {
-        return decrypt(in, m_key);
-    }
-    
-    static std::string get_key() { return m_key; }
+    static const std::string& get_key() { return m_key; }
     static void set_key(const std::string& key) { m_key = key; }
     
 private:
     
-    static std::string xor_impl(const std::string& data, const std::string& key)
+    template <typename buffer_type>
+    static decltype(auto) do_xor(buffer_type&& data, const std::string& key, std::true_type)
     {
-        auto ret = data;
-        for (int i = 0; i < ret.size(); ++i)
-        {
-            ret[i] ^= key.at(i % key.size());
-        }
+        std::string ret(data);
+        xor_impl(ret, key);
         return ret;
     }
     
-    static std::string base64_encode(const std::string& in)
+    template <typename buffer_type>
+    static decltype(auto) do_xor(buffer_type&& data, const std::string& key, std::false_type)
     {
-        auto bytes_to_encode = (const uint8_t*)in.c_str();
+        std::decay_t<buffer_type> ret(std::forward<buffer_type>(data));
+        xor_impl(ret, key);
+        return ret;
+    }
+    
+    template <typename buffer_type>
+    static void xor_impl(buffer_type& data, const std::string& key)
+    {
+        for (int i = 0; i < data.size(); ++i)
+        {
+            data[i] ^= key.at(i % key.size());
+        }
+    }
+    
+    template <typename buffer_type>
+    static decltype(auto) base64_encode(buffer_type&& in)
+    {
+        buffer_type ret;
+        
+        auto bytes_to_encode = in.data();
         auto in_len = in.size();
         
-        std::string ret;
         int i = 0;
         int j = 0;
         uint8_t char_array_3[3];
@@ -92,7 +103,7 @@ private:
                 
                 for (i = 0; i < 4 ; ++i)
                 {
-                    ret += m_base64_chars.at(char_array_4[i]);
+                    ret.push_back(m_base64_chars.at(char_array_4[i]));
                 }
                 
                 i = 0;
@@ -112,31 +123,46 @@ private:
             
             for (j = 0; j < i + 1; ++j)
             {
-                ret += m_base64_chars.at(char_array_4[j]);
+                ret.push_back(m_base64_chars.at(char_array_4[j]));
             }
             
             while ( i++ < 3 )
             {
-                ret += '=';
+                ret.push_back('=');
             }
-            
         }
         
         return ret;
     }
     
-    static std::string base64_decode(const std::string& encoded_string)
+    template <typename buffer_type>
+    static decltype(auto) base64_decode(buffer_type&& encoded_data, std::true_type)
     {
-        auto in_len = encoded_string.size();
+        std::string buffer(encoded_data), out;
+        base64_decode_impl(std::move(buffer), out);
+        return out;
+    }
+    
+    template <typename buffer_type>
+    static decltype(auto) base64_decode(buffer_type&& encoded_data, std::false_type)
+    {
+        std::decay_t<buffer_type> out;
+        base64_decode_impl(std::forward<buffer_type>(encoded_data), out);
+        return out;
+    }
+    
+    template <typename buffer_type, typename out_type>
+    static void base64_decode_impl(buffer_type&& encoded_data, out_type& out)
+    {
+        auto in_len = encoded_data.size();
         int i = 0;
         int j = 0;
         int in_ = 0;
         uint8_t char_array_4[4], char_array_3[3];
-        std::string ret;
         
-        while (in_len-- && ( encoded_string[in_] != '=') && is_base64(encoded_string[in_]))
+        while (in_len-- && ( encoded_data[in_] != '=') && is_base64(encoded_data[in_]))
         {
-            char_array_4[i++] = encoded_string[in_]; in_++;
+            char_array_4[i++] = encoded_data[in_]; in_++;
             if ( i == 4 )
             {
                 for (i = 0; i <4; ++i)
@@ -150,7 +176,7 @@ private:
                 
                 for (i = 0; i < 3; ++i)
                 {
-                    ret += char_array_3[i];
+                    out.push_back(char_array_3[i]);
                 }
                 
                 i = 0;
@@ -169,11 +195,9 @@ private:
             
             for (j = 0; j < i - 1; ++j)
             {
-                ret += char_array_3[j];
+                out.push_back(char_array_3[j]);
             }
         }
-        
-        return ret;
     }
     
     static bool is_base64(uint8_t c)
