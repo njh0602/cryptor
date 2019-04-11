@@ -35,36 +35,43 @@ public:
     
     cryptor() = delete;
     
-    template <typename buffer_type>
-    static decltype(auto) encrypt(buffer_type&& in, const std::string& key = m_key)
+    static std::string encrypt(const char* in, const std::string& key = m_key)
     {
-        return base64_encode(do_xor(std::forward<buffer_type>(in), key, std::is_same<const char*, std::decay_t<buffer_type>>()));
+        return base64_encode(do_xor(std::string(in), key));
     }
     
     template <typename buffer_type>
-    static decltype(auto) decrypt(buffer_type&& in, const std::string& key = m_key)
+    static buffer_type encrypt(const buffer_type& in, const std::string& key = m_key)
     {
-        return do_xor(base64_decode(std::forward<buffer_type>(in), std::is_same<const char*, std::decay_t<buffer_type>>()),
-                      key, std::is_same<const char*, std::decay_t<buffer_type>>());
+        return base64_encode(do_xor(in, key));
     }
+    
+    static std::string decrypt(const char* in, const std::string& key = m_key)
+    {
+        return do_xor(base64_decode(std::string(in)), key);
+    }
+    
+    template <typename buffer_type>
+    static buffer_type decrypt(const buffer_type& in, const std::string& key = m_key)
+    {
+        return do_xor(base64_decode(in), key);
+    }
+    
     
     static const std::string& get_key() { return m_key; }
     static void set_key(const std::string& key) { m_key = key; }
     
 private:
     
-    template <typename buffer_type>
-    static decltype(auto) do_xor(buffer_type&& data, const std::string& key, std::true_type)
+    static std::string do_xor(const char* data, const std::string& key)
     {
-        std::string ret(data);
-        xor_impl(ret, key);
-        return ret;
+        return do_xor(std::string(data), key);
     }
     
     template <typename buffer_type>
-    static decltype(auto) do_xor(buffer_type&& data, const std::string& key, std::false_type)
+    static buffer_type do_xor(const buffer_type& data, const std::string& key)
     {
-        std::decay_t<buffer_type> ret(std::forward<buffer_type>(data));
+        buffer_type ret(data);
         xor_impl(ret, key);
         return ret;
     }
@@ -72,14 +79,25 @@ private:
     template <typename buffer_type>
     static void xor_impl(buffer_type& data, const std::string& key)
     {
-        for (int i = 0; i < data.size(); ++i)
+        for (size_t i = 0; i < data.size(); ++i)
         {
             data[i] ^= key.at(i % key.size());
         }
     }
     
+    static std::string base64_encode(const char* in)
+    {
+        return base64_encode_impl(std::string(in));
+    }
+    
     template <typename buffer_type>
-    static decltype(auto) base64_encode(buffer_type&& in)
+    static buffer_type base64_encode(const buffer_type& in)
+    {
+        return base64_encode_impl(in);
+    }
+    
+    template <typename buffer_type>
+    static buffer_type base64_encode_impl(const buffer_type& in)
     {
         buffer_type ret;
         
@@ -101,7 +119,7 @@ private:
                 char_array_4[2] = ((char_array_3[1] & 0x0f) << 2) + ((char_array_3[2] & 0xc0) >> 6);
                 char_array_4[3] = char_array_3[2] & 0x3f;
                 
-                for (i = 0; i < 4 ; ++i)
+                for (i = 0; i < 4; ++i)
                 {
                     ret.push_back(m_base64_chars.at(char_array_4[i]));
                 }
@@ -126,7 +144,7 @@ private:
                 ret.push_back(m_base64_chars.at(char_array_4[j]));
             }
             
-            while ( i++ < 3 )
+            while (i++ < 3)
             {
                 ret.push_back('=');
             }
@@ -135,19 +153,16 @@ private:
         return ret;
     }
     
-    template <typename buffer_type>
-    static decltype(auto) base64_decode(buffer_type&& encoded_data, std::true_type)
+    static std::string base64_decode(const char* encoded_data)
     {
-        std::string buffer(encoded_data), out;
-        base64_decode_impl(std::move(buffer), out);
-        return out;
+        return base64_decode(std::string(encoded_data));
     }
     
     template <typename buffer_type>
-    static decltype(auto) base64_decode(buffer_type&& encoded_data, std::false_type)
+    static buffer_type base64_decode(const buffer_type& encoded_data)
     {
-        std::decay_t<buffer_type> out;
-        base64_decode_impl(std::forward<buffer_type>(encoded_data), out);
+        buffer_type out;
+        base64_decode_impl(encoded_data, out);
         return out;
     }
     
@@ -160,19 +175,19 @@ private:
         int in_ = 0;
         uint8_t char_array_4[4], char_array_3[3];
         
-        while (in_len-- && ( encoded_data[in_] != '=') && is_base64(encoded_data[in_]))
+        while (in_len-- && (encoded_data[in_] != '=') && is_base64(encoded_data[in_]))
         {
             char_array_4[i++] = encoded_data[in_]; in_++;
-            if ( i == 4 )
+            if (i == 4)
             {
-                for (i = 0; i <4; ++i)
+                for (i = 0; i < 4; ++i)
                 {
-                    char_array_4[i] = m_base64_chars.find(char_array_4[i]);
+                    char_array_4[i] = static_cast<uint8_t>(m_base64_chars.find(char_array_4[i]));
                 }
                 
-                char_array_3[0] = ( char_array_4[0] << 2       ) + ((char_array_4[1] & 0x30) >> 4);
+                char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
                 char_array_3[1] = ((char_array_4[1] & 0xf) << 4) + ((char_array_4[2] & 0x3c) >> 2);
-                char_array_3[2] = ((char_array_4[2] & 0x3) << 6) +   char_array_4[3];
+                char_array_3[2] = ((char_array_4[2] & 0x3) << 6) + char_array_4[3];
                 
                 for (i = 0; i < 3; ++i)
                 {
@@ -183,11 +198,11 @@ private:
             }
         }
         
-        if ( i )
+        if (i)
         {
             for (j = 0; j < i; ++j)
             {
-                char_array_4[j] = m_base64_chars.find(char_array_4[j]);
+                char_array_4[j] = static_cast<uint8_t>(m_base64_chars.find(char_array_4[j]));
             }
             
             char_array_3[0] = (char_array_4[0] << 2) + ((char_array_4[1] & 0x30) >> 4);
@@ -206,4 +221,3 @@ private:
     }
     
 };
-
