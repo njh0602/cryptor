@@ -5,7 +5,7 @@ use xor encryption/decryption + base64 encode/decode
 ## test
 
 ```
-g++ -std=c++14 test.cpp -o test
+g++ -std=c++11 test.cpp -o test
 ./test
 ```
 
